@@ -57,3 +57,9 @@ Sprint 2 (RBAC sweep, audit-log endpoint, dashboard, web UI) complete and pushed
 Backend: 43 tests passing, 99.05%/81.41%/97.01%/98.93% combined coverage, 0 npm audit vulnerabilities.
 Frontend: lint clean, build clean, Playwright E2E golden path passing with video recorded.
 Next: Sprint 3 (mobile app — Expo/React Native, owner+staff daily entry, offline queue, App/Play Store publishing).
+
+## MILESTONE — Sprint 3 SHIP — 2026-08-20
+Sprint 3 (Mobile app: auth, quick entry, offline queue, home/ledger/settings) complete and pushed to origin/main (5bd60e1).
+Story 3.4 (store publishing) intentionally stopped short of actual submission — requires the user's own Apple Developer ($99/yr) and Google Play ($25) accounts, signing credentials, and business/legal details (privacy policy, content rating) that only they can provide. Handoff doc: docs/mobile-publishing.md.
+Backend gained Idempotency-Key support for ledger entry creation this sprint (needed for real offline-queue dedup, not just client-side pretending). 47 backend tests passing, mobile: 7 unit tests + manual QA via Expo web preview (real device/simulator testing not available in this environment — noted as a real gap, not silently skipped).
+Next: Sprint 4 (POS/payment integration, CI/CD, encrypted backups + restore drill, pre-launch compliance checklist).
