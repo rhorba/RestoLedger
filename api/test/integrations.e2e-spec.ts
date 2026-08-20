@@ -74,7 +74,7 @@ describe('POS webhook integration (e2e)', () => {
       `owner-webhook-${unique}@test.com`,
     );
     const tenantId = await createTenant(ownerToken, 'Tenant Webhook');
-    const secret = 'whsec_test_1';
+    const secret = 'test-fixture-secret-1';
     const connectionId = await connectIntegration(ownerToken, tenantId, secret);
 
     const body = JSON.stringify({
@@ -121,7 +121,7 @@ describe('POS webhook integration (e2e)', () => {
     const connectionId = await connectIntegration(
       ownerToken,
       tenantId,
-      'whsec_test_2',
+      'test-fixture-secret-2',
     );
 
     const body = JSON.stringify({
@@ -166,7 +166,7 @@ describe('POS webhook integration (e2e)', () => {
       `owner-webhook3-${unique}@test.com`,
     );
     const tenantId = await createTenant(ownerToken, 'Tenant Webhook3');
-    const secret = 'whsec_test_3';
+    const secret = 'test-fixture-secret-3';
     const connectionId = await connectIntegration(ownerToken, tenantId, secret);
 
     const body = JSON.stringify({

@@ -10,7 +10,10 @@ const VALID_KEY =
 describe('CredentialsCipher', () => {
   it('round-trips a credentials object', () => {
     const cipher = new CredentialsCipher(configWith(VALID_KEY));
-    const plaintext = { apiKey: 'sk_live_abc123', webhookSecret: 'whsec_xyz' };
+    // Deliberately not shaped like a real provider's key format (e.g. Stripe's sk_live_/
+    // whsec_ prefixes) — a fixture that LOOKS like a real secret is exactly what a secrets
+    // scanner is supposed to flag, fake or not (caught by CI's Gitleaks job — see corrections.md).
+    const plaintext = { apiKey: 'test-fixture-key-value', webhookSecret: 'test-fixture-webhook-secret' };
 
     const encrypted = cipher.encrypt(plaintext);
     const decrypted = cipher.decrypt(encrypted);

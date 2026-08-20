@@ -7,7 +7,7 @@ function sign(body: string, secret: string) {
 
 describe('GenericWebhookProvider', () => {
   const provider = new GenericWebhookProvider();
-  const secret = 'whsec_test';
+  const secret = 'test-fixture-webhook-secret';
 
   describe('verifyWebhookSignature', () => {
     it('accepts a correctly signed payload', () => {
