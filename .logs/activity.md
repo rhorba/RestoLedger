@@ -51,3 +51,9 @@ Automated as Playwright E2E test (web/e2e/golden-path.spec.ts) with video record
 ## VIDEO_RECORDED — 2026-08-20
 Scenario: Sprint 2 golden path — register, create tenant, post ledger entry, verify dashboard, reverse entry, verify audit log.
 Saved to .recordings/sprint2-golden-path-2026-08-20.webm (not committed — .recordings/ is gitignored, evidence kept locally).
+
+## MILESTONE — Sprint 2 SHIP — 2026-08-20
+Sprint 2 (RBAC sweep, audit-log endpoint, dashboard, web UI) complete and pushed to origin/main (b865e02).
+Backend: 43 tests passing, 99.05%/81.41%/97.01%/98.93% combined coverage, 0 npm audit vulnerabilities.
+Frontend: lint clean, build clean, Playwright E2E golden path passing with video recorded.
+Next: Sprint 3 (mobile app — Expo/React Native, owner+staff daily entry, offline queue, App/Play Store publishing).
