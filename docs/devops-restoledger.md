@@ -56,8 +56,11 @@ CMD ["node", "dist/main.js"]
 | Uptime | External uptime monitor (e.g., UptimeRobot-class) | 2 consecutive failed health checks |
 | Backup verification | Scheduled restore-drill job | Restore drill failure → immediate alert |
 
-## 7. Pre-Launch Compliance Checklist (from Security Baseline)
-- [ ] CNDP declaration/registration completed for Law 09-08 (legal review required — not a code task)
-- [ ] Data retention policy (7 years) implemented in backup/archival strategy
-- [ ] Hosting region confirmed against any Law 09-08 data-residency guidance received during legal review
-- [ ] GDPR data-subject export/delete endpoints functional if any EU-resident data is in scope
+### Backup & restore drill (Story 4.3 — implemented and verified)
+- `api/scripts/backup-db.sh` — `pg_dump` (via `docker exec` locally; a real deployment runs it wherever has network access to the managed Postgres instance) → gzip → AES-256-CBC encrypt (openssl, PBKDF2-derived key from `BACKUP_ENCRYPTION_PASSPHRASE`). Output: `api/backups/restoledger-<UTC-timestamp>.sql.gz.enc` (gitignored — never commit backup files, encrypted or not).
+- `api/scripts/restore-drill.sh <backup-file>` — decrypts, restores into a disposable `restoledger_restore_drill_<timestamp>` database (never the real dev/prod DB), verifies table count + applied migration count, then drops the drill database. Exits non-zero on any failure — wire this into a scheduled job with alerting once a hosting platform is chosen.
+- **Actually run, not just written**: both scripts were executed against the local dev database on 2026-08-20 — backup produced a 124K encrypted file, restore drill passed (7 tables, 8 applied migrations), drill database cleaned up automatically. This is what "restore drill" is supposed to mean — proof the backup is usable, not just that a file exists.
+- `BACKUP_ENCRYPTION_PASSPHRASE` is a separate secret from `INTEGRATION_ENCRYPTION_KEY` (different rotation policy — backup encryption keys typically need longer retention than a live app secret, since old backups must stay decryptable).
+
+## 7. Pre-Launch Compliance Checklist
+Superseded by the dedicated document: **docs/pre-launch-compliance-checklist.md** (Story 4.4) — expands this into what's actually legally required (with the caveat that it needs real legal review, not an AI's reading of the law) versus what's already technically implemented and tested.

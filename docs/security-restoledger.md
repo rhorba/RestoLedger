@@ -10,12 +10,12 @@
 ## 2. STRIDE Analysis (top risks only)
 | Threat | Component | Mitigation | Status |
 |---|---|---|---|
-| Spoofing | Auth endpoint | Rate limiting, account lockout after 5 failed attempts, bcrypt/Argon2 password hashing | TODO |
-| Tampering | POS webhook endpoint | HMAC signature verification on every webhook before processing | TODO |
-| Repudiation | Ledger mutations | Append-only ledger + mandatory audit log entry per mutation (ADR-3) | TODO |
-| Info Disclosure | Cross-tenant API responses | Tenant-scope middleware on every query + Postgres RLS as defense-in-depth + CI cross-tenant tests | TODO |
-| DoS | Public auth/webhook endpoints | Rate limiting, no unauthenticated endpoint does expensive work | TODO |
-| Elevation of Privilege | RBAC role system | Server-side role check on every request; roles never trusted from client input | TODO |
+| Spoofing | Auth endpoint | Rate limiting, account lockout after 5 failed attempts, bcrypt hashing | Done (Sprint 1) |
+| Tampering | POS webhook endpoint | HMAC-SHA256 signature verification on every webhook before processing (constant-time compare) | Done (Sprint 4) |
+| Repudiation | Ledger mutations | Append-only ledger + mandatory audit log entry per mutation, same DB transaction (ADR-3) | Done (Sprint 1) |
+| Info Disclosure | Cross-tenant API responses | Tenant-scope middleware on every query + Postgres RLS (FORCE, non-superuser app role) as defense-in-depth + e2e cross-tenant tests in CI | Done (Sprint 1–4) |
+| DoS | Public auth/webhook endpoints | Rate limiting (30/min/IP on auth; app-wide default elsewhere), no unauthenticated endpoint does expensive work | Done (Sprint 2) |
+| Elevation of Privilege | RBAC role system | Server-side role check on every request via TenantMembershipGuard; roles never trusted from client input | Done (Sprint 1–2) |
 
 ## 3. Authentication Strategy
 - **Type**: JWT — short-lived access token (15 min) + refresh token (7 days, rotated on use)
@@ -45,10 +45,10 @@
 - **Action**: DevOps foundation doc will include this as a pre-launch checklist item, not a v1 code task.
 
 ## 7. Security Requirements for Dev Team
-- [ ] All inputs validated server-side (NestJS class-validator on every DTO)
-- [ ] Output encoded for context; ORM (Prisma) parameterizes all queries — no raw SQL string concatenation
-- [ ] No secrets in code, logs, or error messages — error responses never leak stack traces in production
-- [ ] HTTPS only; security headers configured (see OWASP checklist: HSTS, CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
-- [ ] Dependencies scanned in CI (npm audit / Trivy) — critical CVEs block merge
-- [ ] Tenant-scope middleware is not optional per-route — enforced globally, opt-out requires explicit review
-- [ ] Every ledger-mutating endpoint writes an audit log entry in the same transaction (not best-effort, not async)
+- [x] All inputs validated server-side (NestJS class-validator on every DTO, `forbidNonWhitelisted`)
+- [x] Output encoded for context; ORM (Prisma) parameterizes all queries — the one raw-SQL exception ($queryRaw calling the webhook lookup SECURITY DEFINER function) uses Prisma's tagged-template parameterization, never string concatenation
+- [x] No secrets in code, logs, or error messages — error responses never leak stack traces in production; secrets live in `.env` (gitignored) with `.env.example` documenting names only
+- [ ] HTTPS only; security headers configured — Helmet headers ARE set (HSTS, CSP, X-Content-Type-Options, etc.), but TLS termination itself depends on a hosting platform not yet chosen (devops-restoledger.md §3 "TBD") — **not done, blocked on deployment, not a code gap**
+- [x] Dependencies scanned in CI (npm audit, `--audit-level=critical`) — Trivy/Semgrep from the original devops sketch not added; npm audit + Gitleaks cover the gate that exists today
+- [x] Tenant-scope middleware is not optional per-route — enforced via TenantMembershipGuard + RLS (FORCE, non-superuser role); the one exception (webhook connection lookup) uses a narrowly-scoped SECURITY DEFINER function, documented in corrections.md, not a silent bypass
+- [x] Every ledger-mutating endpoint writes an audit log entry in the same transaction (not best-effort, not async) — verified by e2e tests, including the POS-webhook path
