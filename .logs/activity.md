@@ -18,3 +18,6 @@ Batch 3 complete: Test Strategy, DevOps Foundation, Stories drafted. ALL 10 foun
 prd, system-design, architecture, security, database, ux, ui, test-strategy, devops, stories.
 Epics/sprints: Sprint1 (auth+tenancy+ledger core), Sprint2 (RBAC+audit+web dashboard), Sprint3 (mobile app), Sprint4 (POS integration+compliance+CI/CD).
 Foundation-doc session complete. No code written yet per CLAUDE.md rule 13 (mandatory doc-first gate).
+
+## PUSH — 2026-08-20
+Pushed to https://github.com/rhorba/RestoLedger, branch main, commit 8b4b3d4.
