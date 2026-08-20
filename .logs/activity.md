@@ -27,3 +27,8 @@ Env vars collected: DATABASE_URL (local docker-compose Postgres, port 5433), JWT
 Local Postgres started via docker-compose (restoledger-postgres, port 5433) — separate from other local projects' containers (moqawil on 5434).
 NestJS API scaffolded in api/. Dependencies installed: Prisma 7.9.1, @nestjs/jwt, @nestjs/passport, passport-jwt, bcrypt, class-validator/transformer, helmet, @nestjs/config.
 npm audit: fixed high-severity deepmerge-ts transitive vuln via package.json overrides pin (^8.0.1) — 0 vulnerabilities.
+
+## MILESTONE — Sprint 1 SHIP — 2026-08-20
+Sprint 1 (Foundation: auth, multi-tenancy, core ledger) complete and pushed to origin/main (aec986e).
+No video recording this sprint — no UI exists yet (web dashboard is Sprint 2, mobile is Sprint 3); Playwright E2E recording applies from Sprint 2 onward per CLAUDE.md rule 9.
+Next: Sprint 2 (RBAC full sweep across all endpoints, audit-log read endpoint, web dashboard).
