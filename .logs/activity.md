@@ -32,3 +32,9 @@ npm audit: fixed high-severity deepmerge-ts transitive vuln via package.json ove
 Sprint 1 (Foundation: auth, multi-tenancy, core ledger) complete and pushed to origin/main (aec986e).
 No video recording this sprint — no UI exists yet (web dashboard is Sprint 2, mobile is Sprint 3); Playwright E2E recording applies from Sprint 2 onward per CLAUDE.md rule 9.
 Next: Sprint 2 (RBAC full sweep across all endpoints, audit-log read endpoint, web dashboard).
+
+## MILESTONE — Sprint 2 batch 1 (backend) — 2026-08-20
+Story 2.1 (RBAC sweep): reviewed all Sprint 1 endpoints — createTenant/listMine intentionally open to any authenticated user (self-serve, self-scoped), everything else guarded. No gaps found.
+Story 2.2 (audit read-side): GET /tenants/:tenantId/audit-log added (owner/accountant), paginated.
+Story 2.3 backend half: GET /tenants/:tenantId/dashboard added — today/week/month P&L summary (revenue, expenses, cashPosition) via groupBy aggregation, owner/accountant only.
+43 tests passing (unit + e2e), combined coverage 99.05% stmts / 81.41% branch / 97.01% funcs / 98.93% lines.

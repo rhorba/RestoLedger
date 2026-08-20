@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
-import { TenantScopedTx } from '../prisma/prisma.service';
+import { PrismaService, TenantScopedTx } from '../prisma/prisma.service';
 
 export interface RecordAuditEntryInput {
   tenantId: string;
@@ -20,6 +20,8 @@ export interface RecordAuditEntryInput {
  */
 @Injectable()
 export class AuditService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async record(tx: TenantScopedTx, input: RecordAuditEntryInput) {
     await tx.auditLogEntry.create({
       data: {
@@ -32,5 +34,16 @@ export class AuditService {
         afterState: input.afterState ?? Prisma.JsonNull,
       },
     });
+  }
+
+  async list(tenantId: string, cursor?: string, take = 50) {
+    return this.prisma.withTenant(tenantId, (tx) =>
+      tx.auditLogEntry.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(take, 100),
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+    );
   }
 }

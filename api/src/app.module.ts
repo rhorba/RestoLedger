@@ -8,6 +8,7 @@ import { CommonModule } from './common/common.module';
 import { HealthController } from './health/health.controller';
 import { LedgerModule } from './ledger/ledger.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ReportingModule } from './reporting/reporting.module';
 import { TenantsModule } from './tenants/tenants.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { TenantsModule } from './tenants/tenants.module';
     TenantsModule,
     LedgerModule,
     AuditModule,
+    ReportingModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
