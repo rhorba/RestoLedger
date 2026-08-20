@@ -6,3 +6,12 @@
 **Fix**: `PrismaService.withTenant` and `.withUser` (src/prisma/prisma.service.ts) now explicitly set BOTH session variables on every transaction — the relevant one to the real id, the other to a nil-UUID sentinel (`00000000-...-0000`). Closes the pooling leak regardless of connection reuse history.
 
 **Docs updated**: database-restoledger.md and security-restoledger.md RLS sections should carry a note about this pattern for anyone adding a third `app.*` session-scoped GUC later — don't assume unset means NULL on a pooled connection.
+
+## CORRECTION — 2026-08-20 — Sprint 3 EXECUTE
+**Found by**: e2e test failures (500 errors) immediately after adding the idempotency-key feature, not code review.
+
+**Root cause**: Ran `prisma migrate dev --create-only --name ledger_entry_idempotency_key` BEFORE editing schema.prisma (habit from checking the tool's behavior), which produced an empty migration since there was no diff yet. Editing schema.prisma afterward and re-running `prisma migrate dev` picked up that already-created empty migration folder instead of generating a new one with the real diff, and Prisma recorded it as "applied" — leaving the DB missing the `idempotency_key` column while `prisma migrate status` reported "up to date."
+
+**Fix**: New migration `20260820200500_ledger_entry_idempotency_key_fix` with the actual `ALTER TABLE ADD COLUMN` + unique index, applied via `prisma migrate deploy` (this environment's non-interactive shell doesn't support `migrate dev`'s confirmation prompts — `deploy` is now the reliable path for applying migrations here, `dev`+`--create-only` only for generating the file when schema.prisma is already edited).
+
+**Lesson**: edit schema.prisma FIRST, then run `migrate dev --create-only` — never the reverse order.

@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { LedgerService } from './ledger.service';
 
 describe('LedgerService', () => {
@@ -50,6 +51,56 @@ describe('LedgerService', () => {
         tx,
         expect.objectContaining({ action: 'ledger_entry.create', entityId: 'e1' }),
       );
+    });
+
+    it('replays the existing entry for a repeated idempotency key instead of creating a duplicate', async () => {
+      tx.ledgerEntry.findUnique.mockResolvedValue({
+        id: 'existing',
+        amountCents: 100n,
+        entryType: 'revenue',
+        idempotencyKey: 'key-1',
+      });
+
+      const result = await service.createEntry(
+        't1',
+        'u1',
+        { entryType: 'revenue', amount: 1 } as any,
+        'key-1',
+      );
+
+      expect(tx.ledgerEntry.create).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+      expect(result.id).toBe('existing');
+    });
+
+    it('stores the idempotency key on first creation', async () => {
+      tx.ledgerEntry.findUnique.mockResolvedValue(null);
+      tx.ledgerEntry.create.mockResolvedValue({ id: 'e1', amountCents: 100n, entryType: 'revenue' });
+
+      await service.createEntry('t1', 'u1', { entryType: 'revenue', amount: 1 } as any, 'key-2');
+
+      expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ idempotencyKey: 'key-2' }) }),
+      );
+    });
+
+    it('returns the winning entry instead of throwing when a concurrent request wins the unique-constraint race', async () => {
+      tx.ledgerEntry.findUnique
+        .mockResolvedValueOnce(null) // initial lookup: not found yet
+        .mockResolvedValueOnce({ id: 'winner', amountCents: 100n, entryType: 'revenue' }); // re-query after conflict
+
+      const conflictError = Object.create(Prisma.PrismaClientKnownRequestError.prototype);
+      conflictError.code = 'P2002';
+      tx.ledgerEntry.create.mockRejectedValue(conflictError);
+
+      const result = await service.createEntry(
+        't1',
+        'u1',
+        { entryType: 'revenue', amount: 1 } as any,
+        'key-3',
+      );
+
+      expect(result.id).toBe('winner');
     });
   });
 

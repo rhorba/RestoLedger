@@ -188,6 +188,33 @@ describe('Tenant isolation & RBAC (e2e)', () => {
     expect(secondPage.body.every((e: { id: string }) => e.id !== firstPage.body[0].id && e.id !== firstPage.body[1].id)).toBe(true);
   });
 
+  it('a repeated Idempotency-Key never creates a duplicate entry, even under concurrent requests', async () => {
+    const ownerToken = await registerAndLogin(`owner-idem-${unique}@test.com`);
+    const tenantId = await createTenant(ownerToken, 'Tenant Idem');
+    const idempotencyKey = `key-${unique}`;
+
+    const post = () =>
+      request(app.getHttpServer())
+        .post(`/api/v1/tenants/${tenantId}/ledger-entries`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .set('Idempotency-Key', idempotencyKey)
+        .send({ entryType: 'revenue', amount: 60 });
+
+    const [first, second, third] = await Promise.all([post(), post(), post()]);
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(third.status).toBe(201);
+    expect(first.body.id).toBe(second.body.id);
+    expect(second.body.id).toBe(third.body.id);
+
+    const entries = await request(app.getHttpServer())
+      .get(`/api/v1/tenants/${tenantId}/ledger-entries`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect(entries.body).toHaveLength(1);
+  });
+
   it('rejects reversing an already-reversed entry', async () => {
     const ownerToken = await registerAndLogin(`owner-e-${unique}@test.com`);
     const tenantId = await createTenant(ownerToken, 'Tenant E');

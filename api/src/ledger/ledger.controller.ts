@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -20,8 +20,9 @@ export class LedgerController {
     @Param('tenantId') tenantId: string,
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateLedgerEntryDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.ledgerService.createEntry(tenantId, user.sub, dto);
+    return this.ledgerService.createEntry(tenantId, user.sub, dto, idempotencyKey);
   }
 
   @Roles(Role.owner, Role.accountant)

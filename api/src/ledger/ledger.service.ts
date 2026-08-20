@@ -1,9 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { Prisma } from '../../generated/prisma/client';
 import { CreateLedgerEntryDto } from './dto/create-ledger-entry.dto';
 import { ReverseLedgerEntryDto } from './dto/reverse-ledger-entry.dto';
 import { toLedgerEntryResponse } from './ledger.mapper';
+
+const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
 
 @Injectable()
 export class LedgerService {
@@ -12,31 +15,67 @@ export class LedgerService {
     private readonly audit: AuditService,
   ) {}
 
-  async createEntry(tenantId: string, actorUserId: string, dto: CreateLedgerEntryDto) {
+  /**
+   * Idempotent when `idempotencyKey` is provided (mobile offline queue — Story 3.3): a
+   * retried POST with the same key returns the original entry instead of creating a
+   * duplicate. The DB unique constraint (tenant_id, idempotency_key) is the actual
+   * correctness guarantee — the upfront lookup is just an optimization to skip a doomed
+   * insert; concurrent requests still race safely because the unique constraint catches it.
+   */
+  async createEntry(
+    tenantId: string,
+    actorUserId: string,
+    dto: CreateLedgerEntryDto,
+    idempotencyKey?: string,
+  ) {
     const amountCents = BigInt(Math.round(dto.amount * 100));
 
     const entry = await this.prisma.withTenant(tenantId, async (tx) => {
-      const created = await tx.ledgerEntry.create({
-        data: {
+      if (idempotencyKey) {
+        const existing = await tx.ledgerEntry.findUnique({
+          where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
+        });
+        if (existing) return existing;
+      }
+
+      try {
+        const created = await tx.ledgerEntry.create({
+          data: {
+            tenantId,
+            entryType: dto.entryType,
+            amountCents,
+            description: dto.description,
+            occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
+            createdByUserId: actorUserId,
+            idempotencyKey,
+          },
+        });
+
+        await this.audit.record(tx, {
           tenantId,
-          entryType: dto.entryType,
-          amountCents,
-          description: dto.description,
-          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
-          createdByUserId: actorUserId,
-        },
-      });
+          actorUserId,
+          action: 'ledger_entry.create',
+          entityType: 'ledger_entry',
+          entityId: created.id,
+          afterState: { entryType: created.entryType, amountCents: created.amountCents.toString() },
+        });
 
-      await this.audit.record(tx, {
-        tenantId,
-        actorUserId,
-        action: 'ledger_entry.create',
-        entityType: 'ledger_entry',
-        entityId: created.id,
-        afterState: { entryType: created.entryType, amountCents: created.amountCents.toString() },
-      });
-
-      return created;
+        return created;
+      } catch (err) {
+        if (
+          idempotencyKey &&
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === UNIQUE_CONSTRAINT_VIOLATION
+        ) {
+          // Lost the race to a concurrent request with the same key — that request's entry
+          // is the canonical one; return it instead of erroring the retry.
+          const winner = await tx.ledgerEntry.findUnique({
+            where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
+          });
+          if (winner) return winner;
+        }
+        throw err;
+      }
     });
 
     return toLedgerEntryResponse(entry);

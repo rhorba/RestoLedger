@@ -88,6 +88,10 @@ model LedgerEntry {
   sourceIntegrationId  String?         @map("source_integration_id") @db.Uuid
   createdByUserId      String          @map("created_by_user_id") @db.Uuid
   createdAt            DateTime        @default(now()) @map("created_at")
+  // Client-generated key (mobile offline queue — Story 3.3). A retried POST with the same
+  // key returns the original entry instead of creating a duplicate. Nullable: web/API
+  // clients that don't need offline replay protection don't send one.
+  idempotencyKey       String?         @map("idempotency_key")
 
   tenant             Tenant                 @relation(fields: [tenantId], references: [id])
   createdByUser      User                   @relation("LedgerEntryCreatedBy", fields: [createdByUserId], references: [id])
@@ -95,6 +99,7 @@ model LedgerEntry {
   reversedBy         LedgerEntry[]          @relation("LedgerReversal")
   sourceIntegration  IntegrationConnection? @relation(fields: [sourceIntegrationId], references: [id])
 
+  @@unique([tenantId, idempotencyKey], map: "uq_ledger_tenant_idempotency")
   @@index([tenantId, occurredAt(sort: Desc)], map: "idx_ledger_tenant_occurred")
   @@index([reversalOfId], map: "idx_ledger_reversal")
   @@map("ledger_entry")
