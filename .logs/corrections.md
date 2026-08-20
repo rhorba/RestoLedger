@@ -15,3 +15,10 @@
 **Fix**: New migration `20260820200500_ledger_entry_idempotency_key_fix` with the actual `ALTER TABLE ADD COLUMN` + unique index, applied via `prisma migrate deploy` (this environment's non-interactive shell doesn't support `migrate dev`'s confirmation prompts — `deploy` is now the reliable path for applying migrations here, `dev`+`--create-only` only for generating the file when schema.prisma is already edited).
 
 **Lesson**: edit schema.prisma FIRST, then run `migrate dev --create-only` — never the reverse order.
+
+## CORRECTION — 2026-08-20 — Sprint 3 EXECUTE (mobile offline queue tests)
+**Found by**: writing offline-queue.spec.ts — every test after the first failed with 0 calls to the mocked API.
+
+**Root cause**: `offline-queue.ts`'s `enqueueEntry` fires a background `trySync()` call it deliberately does NOT await (offline-first UX — enqueue must never block on network). The module-level `syncing` lock is set synchronously the instant `trySync()` is called, before any `await`. The first test used a `postLedgerEntry` mock that never resolves, so that fire-and-forget sync's promise chain never reached its `finally { syncing = false }` — `syncing` stayed `true` for the rest of the test file, silently no-opping every subsequent `trySync()` call.
+
+**Fix**: never leave a mocked async dependency permanently unresolved in a test that exercises code with a fire-and-forget background call — it leaks module-level state across tests since Jest doesn't reset the module between `it()` blocks in the same file. Sync-behavior tests now seed the queue directly via AsyncStorage instead of going through `enqueueEntry` (avoids its internal fire-and-forget call entirely).
