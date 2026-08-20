@@ -21,3 +21,9 @@ Foundation-doc session complete. No code written yet per CLAUDE.md rule 13 (mand
 
 ## PUSH — 2026-08-20
 Pushed to https://github.com/rhorba/RestoLedger, branch main, commit 8b4b3d4.
+
+## SESSION_START — Sprint 1 EXECUTE — 2026-08-20
+Env vars collected: DATABASE_URL (local docker-compose Postgres, port 5433), JWT_ACCESS_SECRET/JWT_REFRESH_SECRET (generated dev-only random secrets), PORT, NODE_ENV. Written to api/.env.example (placeholders, committed) and api/.env (real dev values, gitignored).
+Local Postgres started via docker-compose (restoledger-postgres, port 5433) — separate from other local projects' containers (moqawil on 5434).
+NestJS API scaffolded in api/. Dependencies installed: Prisma 7.9.1, @nestjs/jwt, @nestjs/passport, passport-jwt, bcrypt, class-validator/transformer, helmet, @nestjs/config.
+npm audit: fixed high-severity deepmerge-ts transitive vuln via package.json overrides pin (^8.0.1) — 0 vulnerabilities.

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: restoledger-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: restoledger
+      POSTGRES_PASSWORD: restoledger_dev_only
+      POSTGRES_DB: restoledger
+    ports:
+      - "5433:5432"
+    volumes:
+      - restoledger_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restoledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  restoledger_pgdata:
