@@ -7,6 +7,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
+  // Explicit origin allowlist, never '*' (OWASP A01/A05) — web dashboard origin only.
+  app.enableCors({
+    origin: (process.env.WEB_ORIGIN ?? 'http://localhost:3001').split(','),
+    credentials: true,
+  });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({

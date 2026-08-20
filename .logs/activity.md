@@ -38,3 +38,16 @@ Story 2.1 (RBAC sweep): reviewed all Sprint 1 endpoints — createTenant/listMin
 Story 2.2 (audit read-side): GET /tenants/:tenantId/audit-log added (owner/accountant), paginated.
 Story 2.3 backend half: GET /tenants/:tenantId/dashboard added — today/week/month P&L summary (revenue, expenses, cashPosition) via groupBy aggregation, owner/accountant only.
 43 tests passing (unit + e2e), combined coverage 99.05% stmts / 81.41% branch / 97.01% funcs / 98.93% lines.
+
+## MILESTONE — Sprint 2 batch 2 (web dashboard) — 2026-08-20
+Story 2.3/2.4 frontend: Next.js 16 + Tailwind + shadcn/ui web app scaffolded in web/.
+Pages: /login (register+login tabs), /dashboard (P&L cards, today/week/month), /ledger (list, post entry dialog, reverse dialog), /audit (audit trail table), /team (owner-only invite form). Tenant switcher in app shell nav.
+API client (web/src/lib/api.ts) + auth context (web/src/lib/auth-context.tsx) wired to the Sprint 1/2 backend endpoints.
+SECURITY NOTE (also in corrections.md): tokens stored in localStorage, not HttpOnly cookies — security-restoledger.md §3 ideal requires a BFF, deferred. Must harden before real client data.
+CORS enabled on API (main.ts) with explicit WEB_ORIGIN allowlist — caught and fixed a stale-server-process bug during manual testing (old process pre-dated the CORS code change, held port 3000, masked as a "Something went wrong" toast in the browser).
+Manually QA'd full golden path in a real browser (Chrome via claude-in-chrome): register → create tenant → post entry → dashboard reflects it → reverse entry → audit log shows both actions → team invite form renders.
+Automated as Playwright E2E test (web/e2e/golden-path.spec.ts) with video recording — passes.
+
+## VIDEO_RECORDED — 2026-08-20
+Scenario: Sprint 2 golden path — register, create tenant, post ledger entry, verify dashboard, reverse entry, verify audit log.
+Saved to .recordings/sprint2-golden-path-2026-08-20.webm (not committed — .recordings/ is gitignored, evidence kept locally).
