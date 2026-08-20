@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { JwtPayload } from '../auth/jwt-payload.interface';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -22,7 +31,12 @@ export class LedgerController {
     @Body() dto: CreateLedgerEntryDto,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.ledgerService.createEntry(tenantId, user.sub, dto, idempotencyKey);
+    return this.ledgerService.createEntry(
+      tenantId,
+      user.sub,
+      dto,
+      idempotencyKey,
+    );
   }
 
   @Roles(Role.owner, Role.accountant)
@@ -32,7 +46,11 @@ export class LedgerController {
     @Query('cursor') cursor?: string,
     @Query('take') take?: string,
   ) {
-    return this.ledgerService.listEntries(tenantId, cursor, take ? Number(take) : undefined);
+    return this.ledgerService.listEntries(
+      tenantId,
+      cursor,
+      take ? Number(take) : undefined,
+    );
   }
 
   @Roles(Role.owner, Role.accountant)

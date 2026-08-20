@@ -19,7 +19,10 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000';
  * makes Postgres RLS an actual defense-in-depth layer instead of a no-op (ADR-2).
  */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   constructor(config: ConfigService) {
     const connectionString = config.getOrThrow<string>('APP_DATABASE_URL');
     super({ adapter: new PrismaPg({ connectionString }) });

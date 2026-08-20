@@ -1,9 +1,22 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload } from '../../auth/jwt-payload.interface';
 import { Role } from '../../../generated/prisma/enums';
+import type { TenantMembership } from '../../../generated/prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+
+interface TenantScopedRequest extends Request {
+  user?: JwtPayload;
+  tenantId?: string;
+  tenantRole?: Role;
+}
 
 /**
  * Enforces PRD FR-2 / ADR-2: every tenant-scoped endpoint requires the caller to be a member
@@ -23,30 +36,33 @@ export class TenantMembershipGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const tenantId: string | undefined = request.params?.tenantId;
-    const user: JwtPayload | undefined = request.user;
+    const request = context.switchToHttp().getRequest<TenantScopedRequest>();
+    const rawTenantId = request.params?.tenantId;
+    const tenantId = Array.isArray(rawTenantId) ? rawTenantId[0] : rawTenantId;
+    const user = request.user;
 
     if (!tenantId || !user) {
       throw new ForbiddenException('Tenant membership required');
     }
 
-    const membership = await this.prisma.withTenant(tenantId, (tx) =>
-      tx.tenantMembership.findUnique({
-        where: { tenantId_userId: { tenantId, userId: user.sub } },
-      }),
+    const membership: TenantMembership | null = await this.prisma.withTenant(
+      tenantId,
+      (tx) =>
+        tx.tenantMembership.findUnique({
+          where: { tenantId_userId: { tenantId, userId: user.sub } },
+        }),
     );
 
     if (!membership) {
       throw new ForbiddenException('You are not a member of this tenant');
     }
 
-    const requiredRoles = this.reflector.getAllAndOverride<Role[] | undefined>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles = this.reflector.getAllAndOverride<Role[] | undefined>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
-    if (requiredRoles?.length && !requiredRoles.includes(membership.role as Role)) {
+    if (requiredRoles?.length && !requiredRoles.includes(membership.role)) {
       throw new ForbiddenException('Your role does not permit this action');
     }
 

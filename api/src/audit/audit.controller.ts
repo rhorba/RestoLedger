@@ -17,6 +17,10 @@ export class AuditController {
     @Query('cursor') cursor?: string,
     @Query('take') take?: string,
   ) {
-    return this.auditService.list(tenantId, cursor, take ? Number(take) : undefined);
+    return this.auditService.list(
+      tenantId,
+      cursor,
+      take ? Number(take) : undefined,
+    );
   }
 }

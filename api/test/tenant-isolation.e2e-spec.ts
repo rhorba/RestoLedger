@@ -37,10 +37,18 @@ describe('Tenant isolation & RBAC (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
     prisma = moduleRef.get(PrismaService);
   });
@@ -49,7 +57,7 @@ describe('Tenant isolation & RBAC (e2e)', () => {
     await app.close();
   });
 
-  it('blocks an accountant from another tenant from reading this tenant\'s ledger (cross-tenant isolation)', async () => {
+  it("blocks an accountant from another tenant from reading this tenant's ledger (cross-tenant isolation)", async () => {
     const ownerAToken = await registerAndLogin(`owner-a-${unique}@test.com`);
     const tenantAId = await createTenant(ownerAToken, 'Tenant A');
 
@@ -77,7 +85,11 @@ describe('Tenant isolation & RBAC (e2e)', () => {
     const createRes = await request(app.getHttpServer())
       .post(`/api/v1/tenants/${tenantId}/ledger-entries`)
       .set('Authorization', `Bearer ${staffToken}`)
-      .send({ entryType: 'revenue', amount: 500, description: 'Dinner service' })
+      .send({
+        entryType: 'revenue',
+        amount: 500,
+        description: 'Dinner service',
+      })
       .expect(201);
 
     expect(createRes.body.amount).toBe('500.00');
@@ -113,7 +125,9 @@ describe('Tenant isolation & RBAC (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
-      .post(`/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`)
+      .post(
+        `/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`,
+      )
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ reason: 'staff should not be able to do this' })
       .expect(403);
@@ -130,7 +144,9 @@ describe('Tenant isolation & RBAC (e2e)', () => {
       .expect(201);
 
     const reverseRes = await request(app.getHttpServer())
-      .post(`/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`)
+      .post(
+        `/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`,
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ reason: 'wrong amount' })
       .expect(201);
@@ -159,7 +175,9 @@ describe('Tenant isolation & RBAC (e2e)', () => {
       .expect(200);
 
     expect(res.body).toHaveLength(2);
-    const names = res.body.map((m: { tenant: { name: string } }) => m.tenant.name).sort();
+    const names = res.body
+      .map((m: { tenant: { name: string } }) => m.tenant.name)
+      .sort();
     expect(names).toEqual(['Tenant F1', 'Tenant F2']);
   });
 
@@ -182,10 +200,17 @@ describe('Tenant isolation & RBAC (e2e)', () => {
     expect(firstPage.body).toHaveLength(2);
 
     const secondPage = await request(app.getHttpServer())
-      .get(`/api/v1/tenants/${tenantId}/ledger-entries?take=2&cursor=${firstPage.body[1].id}`)
+      .get(
+        `/api/v1/tenants/${tenantId}/ledger-entries?take=2&cursor=${firstPage.body[1].id}`,
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
-    expect(secondPage.body.every((e: { id: string }) => e.id !== firstPage.body[0].id && e.id !== firstPage.body[1].id)).toBe(true);
+    expect(
+      secondPage.body.every(
+        (e: { id: string }) =>
+          e.id !== firstPage.body[0].id && e.id !== firstPage.body[1].id,
+      ),
+    ).toBe(true);
   });
 
   it('a repeated Idempotency-Key never creates a duplicate entry, even under concurrent requests', async () => {
@@ -226,13 +251,17 @@ describe('Tenant isolation & RBAC (e2e)', () => {
       .expect(201);
 
     const reverseRes = await request(app.getHttpServer())
-      .post(`/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`)
+      .post(
+        `/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`,
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ reason: 'first reversal' })
       .expect(201);
 
     await request(app.getHttpServer())
-      .post(`/api/v1/tenants/${tenantId}/ledger-entries/${reverseRes.body.id}/reverse`)
+      .post(
+        `/api/v1/tenants/${tenantId}/ledger-entries/${reverseRes.body.id}/reverse`,
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ reason: 'second reversal attempt' })
       .expect(400);

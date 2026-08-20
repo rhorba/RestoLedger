@@ -27,7 +27,10 @@ export class TenantsController {
   @UseGuards(TenantMembershipGuard)
   @Roles(Role.owner)
   @Post(':tenantId/memberships')
-  addMembership(@Param('tenantId') tenantId: string, @Body() dto: AddMembershipDto) {
+  addMembership(
+    @Param('tenantId') tenantId: string,
+    @Body() dto: AddMembershipDto,
+  ) {
     return this.tenantsService.addMembership(tenantId, dto);
   }
 }

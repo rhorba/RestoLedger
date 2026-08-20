@@ -32,13 +32,20 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'existing' });
 
       await expect(
-        service.register({ email: 'a@b.com', password: 'password123', fullName: 'A' }),
+        service.register({
+          email: 'a@b.com',
+          password: 'password123',
+          fullName: 'A',
+        }),
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('creates the user and issues tokens', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockResolvedValue({ id: 'new-user', email: 'a@b.com' });
+      prisma.user.create.mockResolvedValue({
+        id: 'new-user',
+        email: 'a@b.com',
+      });
 
       const result = await service.register({
         email: 'a@b.com',
@@ -47,7 +54,10 @@ describe('AuthService', () => {
       });
 
       expect(prisma.user.create).toHaveBeenCalled();
-      expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' });
+      expect(result).toEqual({
+        accessToken: 'signed-token',
+        refreshToken: 'signed-token',
+      });
     });
   });
 
@@ -93,13 +103,16 @@ describe('AuthService', () => {
         lockedUntil: null,
       });
 
-      await expect(service.login({ email: 'a@b.com', password: 'wrong' })).rejects.toBeInstanceOf(
-        UnauthorizedException,
-      );
+      await expect(
+        service.login({ email: 'a@b.com', password: 'wrong' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
 
       expect(prisma.user.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ failedLoginAttempts: 5, lockedUntil: expect.any(Date) }),
+          data: expect.objectContaining({
+            failedLoginAttempts: 5,
+            lockedUntil: expect.any(Date),
+          }),
         }),
       );
     });
@@ -129,11 +142,19 @@ describe('AuthService', () => {
         lockedUntil: null,
       });
 
-      const result = await service.login({ email: 'a@b.com', password: 'correct-password' });
+      const result = await service.login({
+        email: 'a@b.com',
+        password: 'correct-password',
+      });
 
-      expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' });
+      expect(result).toEqual({
+        accessToken: 'signed-token',
+        refreshToken: 'signed-token',
+      });
       expect(prisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { failedLoginAttempts: 0, lockedUntil: null } }),
+        expect.objectContaining({
+          data: { failedLoginAttempts: 0, lockedUntil: null },
+        }),
       );
     });
   });
@@ -145,20 +166,30 @@ describe('AuthService', () => {
 
       const result = await service.refresh('valid-refresh-token');
 
-      expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' });
+      expect(result).toEqual({
+        accessToken: 'signed-token',
+        refreshToken: 'signed-token',
+      });
     });
 
     it('rejects an invalid or expired refresh token', async () => {
       jwt.verifyAsync.mockRejectedValue(new Error('expired'));
 
-      await expect(service.refresh('bad-token')).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(service.refresh('bad-token')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
 
     it('rejects a refresh token for a user that no longer exists', async () => {
-      jwt.verifyAsync.mockResolvedValue({ sub: 'deleted-user', email: 'gone@b.com' });
+      jwt.verifyAsync.mockResolvedValue({
+        sub: 'deleted-user',
+        email: 'gone@b.com',
+      });
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.refresh('valid-but-orphaned')).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(
+        service.refresh('valid-but-orphaned'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 });

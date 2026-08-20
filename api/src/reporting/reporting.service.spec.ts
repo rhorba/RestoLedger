@@ -7,7 +7,11 @@ describe('ReportingService', () => {
 
   beforeEach(() => {
     tx = { ledgerEntry: { groupBy: jest.fn() } };
-    prisma = { withTenant: jest.fn((_tenantId: string, fn: (tx: unknown) => unknown) => fn(tx)) };
+    prisma = {
+      withTenant: jest.fn((_tenantId: string, fn: (tx: unknown) => unknown) =>
+        fn(tx),
+      ),
+    };
     service = new ReportingService(prisma);
   });
 
@@ -19,7 +23,11 @@ describe('ReportingService', () => {
 
     const result = await service.getDashboardSummary('t1');
 
-    expect(result.today).toEqual({ revenue: '5000.00', expenses: '1200.00', cashPosition: '3800.00' });
+    expect(result.today).toEqual({
+      revenue: '5000.00',
+      expenses: '1200.00',
+      cashPosition: '3800.00',
+    });
   });
 
   it('defaults to zero when a tenant has no entries in the period', async () => {
@@ -27,7 +35,11 @@ describe('ReportingService', () => {
 
     const result = await service.getDashboardSummary('t1');
 
-    expect(result.today).toEqual({ revenue: '0.00', expenses: '0.00', cashPosition: '0.00' });
+    expect(result.today).toEqual({
+      revenue: '0.00',
+      expenses: '0.00',
+      cashPosition: '0.00',
+    });
   });
 
   it('produces a negative cash position when expenses exceed revenue', async () => {

@@ -24,7 +24,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
     }
@@ -38,17 +40,25 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     // Same error for "no such user" and "wrong password" — don't leak which one (OWASP A07).
-    const invalidCredentials = () => new UnauthorizedException('Invalid email or password');
+    const invalidCredentials = () =>
+      new UnauthorizedException('Invalid email or password');
 
     if (!user) throw invalidCredentials();
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
-      throw new UnauthorizedException('Account temporarily locked due to repeated failed attempts');
+      throw new UnauthorizedException(
+        'Account temporarily locked due to repeated failed attempts',
+      );
     }
 
-    const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
+    const passwordMatches = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!passwordMatches) {
       await this.registerFailedAttempt(user.id, user.failedLoginAttempts);
       throw invalidCredentials();
@@ -74,8 +84,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) throw new UnauthorizedException('Invalid or expired refresh token');
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+    if (!user)
+      throw new UnauthorizedException('Invalid or expired refresh token');
 
     return this.issueTokens(user.id, user.email);
   }
@@ -83,7 +96,9 @@ export class AuthService {
   private async registerFailedAttempt(userId: string, currentAttempts: number) {
     const attempts = currentAttempts + 1;
     const lockedUntil =
-      attempts >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null;
+      attempts >= MAX_FAILED_ATTEMPTS
+        ? new Date(Date.now() + LOCKOUT_DURATION_MS)
+        : null;
 
     await this.prisma.user.update({
       where: { id: userId },

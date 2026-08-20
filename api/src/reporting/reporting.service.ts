@@ -4,7 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LedgerEntryType } from '../../generated/prisma/enums';
 
 function startOfUtcDay(from: Date): Date {
-  return new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  return new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()),
+  );
 }
 
 function startOfUtcWeek(from: Date): Date {
@@ -43,8 +45,12 @@ export class ReportingService {
       }),
     );
 
-    const revenueCents = grouped.find((g) => g.entryType === LedgerEntryType.revenue)?._sum.amountCents ?? 0n;
-    const expenseCents = grouped.find((g) => g.entryType === LedgerEntryType.expense)?._sum.amountCents ?? 0n;
+    const revenueCents =
+      grouped.find((g) => g.entryType === LedgerEntryType.revenue)?._sum
+        .amountCents ?? 0n;
+    const expenseCents =
+      grouped.find((g) => g.entryType === LedgerEntryType.expense)?._sum
+        .amountCents ?? 0n;
     const cashPositionCents = revenueCents - expenseCents;
 
     return {

@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  secrets-scan:
+    name: Secrets scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  api:
+    name: API — lint, typecheck, test (coverage gate), audit
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: restoledger
+          POSTGRES_PASSWORD: restoledger_dev_only
+          POSTGRES_DB: restoledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restoledger"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://restoledger:restoledger_dev_only@localhost:5432/restoledger?schema=public
+      APP_DATABASE_URL: postgresql://restoledger_app:restoledger_app_dev_only@localhost:5432/restoledger?schema=public
+      JWT_ACCESS_SECRET: ci-only-access-secret-not-a-real-secret
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-secret
+      JWT_ACCESS_TTL: '900'
+      JWT_REFRESH_TTL: '604800'
+      NODE_ENV: test
+      NODE_OPTIONS: --experimental-vm-modules
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: npm audit (fails only on critical — see .logs/corrections.md for triaged issues)
+        run: npm audit --audit-level=critical
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        # Not `npm run lint` — that script includes --fix, which shouldn't silently mutate
+        # files in CI.
+        run: npx eslint "{src,apps,libs,test}/**/*.ts" --max-warnings=0
+      - name: Test (unit + integration, 80% coverage gate enforced by jest.combined.json)
+        run: npx jest --config ./jest.combined.json --coverage
+
+  web:
+    name: Web — lint, typecheck, build, audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: npm audit (fails only on critical)
+        run: npm audit --audit-level=critical
+      - name: Lint
+        run: npm run lint
+      - name: Build (also typechecks)
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+        run: npm run build
+
+  mobile:
+    name: Mobile — lint, typecheck, test, audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: npm audit (fails only on critical — Expo/Metro toolchain has known high-severity
+          dev-tooling issues with no fix short of an SDK downgrade; see .logs/corrections.md)
+        run: npm audit --audit-level=critical
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx expo lint
+      - name: Test
+        run: npx jest

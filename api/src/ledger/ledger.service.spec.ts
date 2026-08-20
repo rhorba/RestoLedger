@@ -17,7 +17,9 @@ describe('LedgerService', () => {
       },
     };
     prisma = {
-      withTenant: jest.fn((_tenantId: string, fn: (tx: unknown) => unknown) => fn(tx)),
+      withTenant: jest.fn((_tenantId: string, fn: (tx: unknown) => unknown) =>
+        fn(tx),
+      ),
     };
     audit = { record: jest.fn() };
     service = new LedgerService(prisma, audit);
@@ -38,18 +40,30 @@ describe('LedgerService', () => {
       } as any);
 
       expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ amountCents: 42050n }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ amountCents: 42050n }),
+        }),
       );
     });
 
     it('writes an audit log entry in the same transaction as the ledger write', async () => {
-      tx.ledgerEntry.create.mockResolvedValue({ id: 'e1', amountCents: 100n, entryType: 'revenue' });
+      tx.ledgerEntry.create.mockResolvedValue({
+        id: 'e1',
+        amountCents: 100n,
+        entryType: 'revenue',
+      });
 
-      await service.createEntry('t1', 'u1', { entryType: 'revenue', amount: 1 } as any);
+      await service.createEntry('t1', 'u1', {
+        entryType: 'revenue',
+        amount: 1,
+      } as any);
 
       expect(audit.record).toHaveBeenCalledWith(
         tx,
-        expect.objectContaining({ action: 'ledger_entry.create', entityId: 'e1' }),
+        expect.objectContaining({
+          action: 'ledger_entry.create',
+          entityId: 'e1',
+        }),
       );
     });
 
@@ -75,21 +89,38 @@ describe('LedgerService', () => {
 
     it('stores the idempotency key on first creation', async () => {
       tx.ledgerEntry.findUnique.mockResolvedValue(null);
-      tx.ledgerEntry.create.mockResolvedValue({ id: 'e1', amountCents: 100n, entryType: 'revenue' });
+      tx.ledgerEntry.create.mockResolvedValue({
+        id: 'e1',
+        amountCents: 100n,
+        entryType: 'revenue',
+      });
 
-      await service.createEntry('t1', 'u1', { entryType: 'revenue', amount: 1 } as any, 'key-2');
+      await service.createEntry(
+        't1',
+        'u1',
+        { entryType: 'revenue', amount: 1 } as any,
+        'key-2',
+      );
 
       expect(tx.ledgerEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ idempotencyKey: 'key-2' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ idempotencyKey: 'key-2' }),
+        }),
       );
     });
 
     it('returns the winning entry instead of throwing when a concurrent request wins the unique-constraint race', async () => {
       tx.ledgerEntry.findUnique
         .mockResolvedValueOnce(null) // initial lookup: not found yet
-        .mockResolvedValueOnce({ id: 'winner', amountCents: 100n, entryType: 'revenue' }); // re-query after conflict
+        .mockResolvedValueOnce({
+          id: 'winner',
+          amountCents: 100n,
+          entryType: 'revenue',
+        }); // re-query after conflict
 
-      const conflictError = Object.create(Prisma.PrismaClientKnownRequestError.prototype);
+      const conflictError = Object.create(
+        Prisma.PrismaClientKnownRequestError.prototype,
+      );
       conflictError.code = 'P2002';
       tx.ledgerEntry.create.mockRejectedValue(conflictError);
 
@@ -113,7 +144,11 @@ describe('LedgerService', () => {
         amountCents: 42050n,
         reversalOfId: null,
       });
-      tx.ledgerEntry.create.mockResolvedValue({ id: 'rev', amountCents: -42050n, entryType: 'revenue' });
+      tx.ledgerEntry.create.mockResolvedValue({
+        id: 'rev',
+        amountCents: -42050n,
+        entryType: 'revenue',
+      });
 
       await service.reverseEntry('t1', 'u1', 'orig', { reason: 'typo' });
 

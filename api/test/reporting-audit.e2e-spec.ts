@@ -29,10 +29,18 @@ describe('Dashboard & audit-log endpoints (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
   });
 
@@ -60,7 +68,11 @@ describe('Dashboard & audit-log endpoints (e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
-    expect(res.body.today).toEqual({ revenue: '300.00', expenses: '50.00', cashPosition: '250.00' });
+    expect(res.body.today).toEqual({
+      revenue: '300.00',
+      expenses: '50.00',
+      cashPosition: '250.00',
+    });
     expect(res.body.week.revenue).toBe('300.00');
     expect(res.body.month.revenue).toBe('300.00');
   });
@@ -91,7 +103,9 @@ describe('Dashboard & audit-log endpoints (e2e)', () => {
   it('an outsider (no membership) cannot read the dashboard or audit log for a tenant', async () => {
     const ownerToken = await registerAndLogin(`owner-dash3-${unique}@test.com`);
     const tenantId = await createTenant(ownerToken, 'Tenant Dash3');
-    const outsiderToken = await registerAndLogin(`outsider-dash3-${unique}@test.com`);
+    const outsiderToken = await registerAndLogin(
+      `outsider-dash3-${unique}@test.com`,
+    );
 
     await request(app.getHttpServer())
       .get(`/api/v1/tenants/${tenantId}/dashboard`)
@@ -115,7 +129,9 @@ describe('Dashboard & audit-log endpoints (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
-      .post(`/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`)
+      .post(
+        `/api/v1/tenants/${tenantId}/ledger-entries/${entryRes.body.id}/reverse`,
+      )
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ reason: 'mistake' })
       .expect(201);
@@ -131,7 +147,9 @@ describe('Dashboard & audit-log endpoints (e2e)', () => {
   });
 
   it('audit log respects the take query param', async () => {
-    const ownerToken = await registerAndLogin(`owner-audit2-${unique}@test.com`);
+    const ownerToken = await registerAndLogin(
+      `owner-audit2-${unique}@test.com`,
+    );
     const tenantId = await createTenant(ownerToken, 'Tenant Audit2');
 
     for (let i = 0; i < 3; i++) {
@@ -172,7 +190,11 @@ describe('Dashboard & audit-log endpoints (e2e)', () => {
     const ownerToken = await registerAndLogin(`owner-dash4-${unique}@test.com`);
     const tenantId = await createTenant(ownerToken, 'Tenant Dash4');
 
-    await request(app.getHttpServer()).get(`/api/v1/tenants/${tenantId}/dashboard`).expect(401);
-    await request(app.getHttpServer()).get(`/api/v1/tenants/${tenantId}/audit-log`).expect(401);
+    await request(app.getHttpServer())
+      .get(`/api/v1/tenants/${tenantId}/dashboard`)
+      .expect(401);
+    await request(app.getHttpServer())
+      .get(`/api/v1/tenants/${tenantId}/audit-log`)
+      .expect(401);
   });
 });

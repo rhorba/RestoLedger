@@ -1,9 +1,20 @@
-import { IsIn, IsISO8601, IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsISO8601,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { LedgerEntryType } from '../../../generated/prisma/enums';
 
 // Reconciliation entries are produced by the reporting module, not posted directly — this
 // endpoint only accepts the two entry types a human (owner/accountant/staff) actually posts.
-const POSTABLE_TYPES = [LedgerEntryType.revenue, LedgerEntryType.expense] as const;
+const POSTABLE_TYPES = [
+  LedgerEntryType.revenue,
+  LedgerEntryType.expense,
+] as const;
 
 export class CreateLedgerEntryDto {
   @IsIn(POSTABLE_TYPES)

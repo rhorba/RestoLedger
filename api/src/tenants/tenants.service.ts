@@ -40,7 +40,9 @@ export class TenantsService {
     return this.prisma.withTenant(tenantId, async (tx) => {
       const user = await tx.user.findUnique({ where: { email: dto.email } });
       if (!user) {
-        throw new NotFoundException('No account exists for this email — they must register first');
+        throw new NotFoundException(
+          'No account exists for this email — they must register first',
+        );
       }
 
       return tx.tenantMembership.create({

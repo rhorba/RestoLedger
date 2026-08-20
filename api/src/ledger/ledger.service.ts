@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '../../generated/prisma/client';
@@ -57,7 +61,10 @@ export class LedgerService {
           action: 'ledger_entry.create',
           entityType: 'ledger_entry',
           entityId: created.id,
-          afterState: { entryType: created.entryType, amountCents: created.amountCents.toString() },
+          afterState: {
+            entryType: created.entryType,
+            amountCents: created.amountCents.toString(),
+          },
         });
 
         return created;
@@ -101,7 +108,9 @@ export class LedgerService {
     dto: ReverseLedgerEntryDto,
   ) {
     const reversal = await this.prisma.withTenant(tenantId, async (tx) => {
-      const original = await tx.ledgerEntry.findUnique({ where: { id: entryId } });
+      const original = await tx.ledgerEntry.findUnique({
+        where: { id: entryId },
+      });
       if (!original || original.tenantId !== tenantId) {
         throw new NotFoundException('Ledger entry not found');
       }
@@ -127,8 +136,14 @@ export class LedgerService {
         action: 'ledger_entry.reverse',
         entityType: 'ledger_entry',
         entityId: created.id,
-        beforeState: { originalEntryId: original.id, originalAmountCents: original.amountCents.toString() },
-        afterState: { reason: dto.reason, amountCents: created.amountCents.toString() },
+        beforeState: {
+          originalEntryId: original.id,
+          originalAmountCents: original.amountCents.toString(),
+        },
+        afterState: {
+          reason: dto.reason,
+          amountCents: created.amountCents.toString(),
+        },
       });
 
       return created;
