@@ -8,3 +8,4 @@ node_modules
 /coverage-e2e
 /coverage-combined
 /test/coverage-e2e
+/backups
