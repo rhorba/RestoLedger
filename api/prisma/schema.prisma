@@ -86,15 +86,18 @@ model LedgerEntry {
   occurredAt           DateTime        @map("occurred_at")
   reversalOfId         String?         @map("reversal_of_id") @db.Uuid
   sourceIntegrationId  String?         @map("source_integration_id") @db.Uuid
-  createdByUserId      String          @map("created_by_user_id") @db.Uuid
+  // Nullable: entries created by a POS/payment webhook have no human actor — attribute those
+  // to sourceIntegrationId instead (Story 4.1). Human-posted entries always set this.
+  createdByUserId      String?         @map("created_by_user_id") @db.Uuid
   createdAt            DateTime        @default(now()) @map("created_at")
-  // Client-generated key (mobile offline queue — Story 3.3). A retried POST with the same
-  // key returns the original entry instead of creating a duplicate. Nullable: web/API
-  // clients that don't need offline replay protection don't send one.
+  // Client-generated key (mobile offline queue — Story 3.3) OR the provider's own
+  // transaction id (POS webhook — Story 4.1). A retried POST/webhook with the same key
+  // returns the original entry instead of creating a duplicate. Nullable: web/API clients
+  // that don't need offline replay protection don't send one.
   idempotencyKey       String?         @map("idempotency_key")
 
   tenant             Tenant                 @relation(fields: [tenantId], references: [id])
-  createdByUser      User                   @relation("LedgerEntryCreatedBy", fields: [createdByUserId], references: [id])
+  createdByUser      User?                  @relation("LedgerEntryCreatedBy", fields: [createdByUserId], references: [id])
   reversalOf         LedgerEntry?           @relation("LedgerReversal", fields: [reversalOfId], references: [id])
   reversedBy         LedgerEntry[]          @relation("LedgerReversal")
   sourceIntegration  IntegrationConnection? @relation(fields: [sourceIntegrationId], references: [id])
@@ -108,7 +111,9 @@ model LedgerEntry {
 model AuditLogEntry {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
-  actorUserId  String   @map("actor_user_id") @db.Uuid
+  // Nullable: system-triggered actions (a POS webhook creating a ledger entry) have no
+  // human actor — null actorUserId means "the system", not "unknown/missing".
+  actorUserId  String?  @map("actor_user_id") @db.Uuid
   action       String
   entityType   String   @map("entity_type")
   entityId     String   @map("entity_id") @db.Uuid
@@ -117,7 +122,7 @@ model AuditLogEntry {
   createdAt    DateTime @default(now()) @map("created_at")
 
   tenant    Tenant @relation(fields: [tenantId], references: [id])
-  actorUser User   @relation("AuditLogActor", fields: [actorUserId], references: [id])
+  actorUser User?  @relation("AuditLogActor", fields: [actorUserId], references: [id])
 
   @@index([tenantId, createdAt(sort: Desc)], map: "idx_audit_tenant_created")
   @@map("audit_log_entry")
@@ -135,6 +140,7 @@ model IntegrationConnection {
   tenant        Tenant        @relation(fields: [tenantId], references: [id])
   ledgerEntries LedgerEntry[]
 
+  @@unique([tenantId, provider], map: "uq_integration_tenant_provider")
   @@index([tenantId], map: "idx_integration_tenant")
   @@map("integration_connection")
 }

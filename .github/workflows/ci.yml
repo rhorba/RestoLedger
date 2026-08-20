@@ -45,6 +45,7 @@ jobs:
       JWT_REFRESH_SECRET: ci-only-refresh-secret-not-a-real-secret
       JWT_ACCESS_TTL: '900'
       JWT_REFRESH_TTL: '604800'
+      INTEGRATION_ENCRYPTION_KEY: 'c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1'
       NODE_ENV: test
       NODE_OPTIONS: --experimental-vm-modules
     defaults:

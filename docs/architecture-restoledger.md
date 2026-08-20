@@ -31,6 +31,7 @@ RestoLedger is a modular-monolith TypeScript API (NestJS) backed by PostgreSQL, 
 - **Decision**: `PosProviderAdapter` interface (fetchTransactions, verifyWebhookSignature, mapToLedgerEntry); concrete provider implementation is the only piece that changes per provider
 - **Alternatives**: Direct provider SDK calls from the ledger module — rejected, couples core financial logic to a third party's API shape
 - **Consequences**: First provider implementation ships behind this interface even though only one provider exists at launch
+- **Update (Sprint 4 EXECUTE)**: the webhook route carries `:connectionId`, not just `:provider` — discovered while implementing that RLS blocks looking up a connection before its tenant is known (no session context exists yet for an anonymous webhook). The connectionId is the pre-signature-check identifier; a `SECURITY DEFINER` DB function (migration `20260820214000`) does the narrow, provider+id-scoped lookup. See .logs/corrections.md.
 
 ## 3. System Design
 ```
@@ -63,7 +64,7 @@ Full schema → `docs/database-restoledger.md` (DBA)
 | POST | /api/v1/tenants/:id/ledger-entries/:entryId/reverse | Reverse an entry (new offsetting entry) | Required — accountant |
 | GET | /api/v1/tenants/:id/audit-log | View audit trail | Required — accountant/owner |
 | POST | /api/v1/tenants/:id/integrations | Connect POS/payment provider | Required — owner/accountant |
-| POST | /api/v1/webhooks/pos/:provider | Receive POS/payment webhook | Signature-verified, no user auth |
+| POST | /api/v1/webhooks/pos/:provider/:connectionId | Receive POS/payment webhook | Signature-verified, no user auth |
 | GET | /api/v1/tenants/:id/export | Export financial data (CSV/PDF) | Required — accountant/owner |
 
 ## 6. Security Considerations

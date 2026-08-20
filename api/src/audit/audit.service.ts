@@ -4,7 +4,8 @@ import { PrismaService, TenantScopedTx } from '../prisma/prisma.service';
 
 export interface RecordAuditEntryInput {
   tenantId: string;
-  actorUserId: string;
+  /** null = system-triggered action (e.g. a POS webhook), not "unknown actor". */
+  actorUserId: string | null;
   action: string;
   entityType: string;
   entityId: string;
