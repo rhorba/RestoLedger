@@ -1,0 +1,135 @@
+// RestoLedger schema — mirrors docs/database-restoledger.md
+// Row-Level Security policies are applied via a raw-SQL migration (Prisma has no native RLS support).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  owner
+  accountant
+  staff
+  firm_admin
+}
+
+enum LedgerEntryType {
+  revenue
+  expense
+  reconciliation
+}
+
+enum IntegrationStatus {
+  active
+  disconnected
+  error
+}
+
+model Tenant {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  memberships           TenantMembership[]
+  ledgerEntries         LedgerEntry[]
+  auditLogEntries       AuditLogEntry[]
+  integrationConnections IntegrationConnection[]
+
+  @@map("tenant")
+}
+
+model User {
+  id                  String    @id @default(uuid()) @db.Uuid
+  email               String    @unique
+  passwordHash        String    @map("password_hash")
+  fullName            String    @map("full_name")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  memberships       TenantMembership[]
+  ledgerEntries     LedgerEntry[]     @relation("LedgerEntryCreatedBy")
+  auditLogEntries   AuditLogEntry[]   @relation("AuditLogActor")
+
+  @@map("app_user")
+}
+
+model TenantMembership {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([userId], map: "idx_membership_user")
+  @@map("tenant_membership")
+}
+
+model LedgerEntry {
+  id                   String          @id @default(uuid()) @db.Uuid
+  tenantId             String          @map("tenant_id") @db.Uuid
+  entryType            LedgerEntryType @map("entry_type")
+  amountCents          BigInt          @map("amount_cents")
+  currency             String          @default("MAD")
+  description          String?
+  occurredAt           DateTime        @map("occurred_at")
+  reversalOfId         String?         @map("reversal_of_id") @db.Uuid
+  sourceIntegrationId  String?         @map("source_integration_id") @db.Uuid
+  createdByUserId      String          @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id])
+  createdByUser      User                   @relation("LedgerEntryCreatedBy", fields: [createdByUserId], references: [id])
+  reversalOf         LedgerEntry?           @relation("LedgerReversal", fields: [reversalOfId], references: [id])
+  reversedBy         LedgerEntry[]          @relation("LedgerReversal")
+  sourceIntegration  IntegrationConnection? @relation(fields: [sourceIntegrationId], references: [id])
+
+  @@index([tenantId, occurredAt(sort: Desc)], map: "idx_ledger_tenant_occurred")
+  @@index([reversalOfId], map: "idx_ledger_reversal")
+  @@map("ledger_entry")
+}
+
+model AuditLogEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  actorUserId  String   @map("actor_user_id") @db.Uuid
+  action       String
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id") @db.Uuid
+  beforeState  Json?    @map("before_state")
+  afterState   Json?    @map("after_state")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  actorUser User   @relation("AuditLogActor", fields: [actorUserId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_audit_tenant_created")
+  @@map("audit_log_entry")
+}
+
+model IntegrationConnection {
+  id                    String            @id @default(uuid()) @db.Uuid
+  tenantId              String            @map("tenant_id") @db.Uuid
+  provider              String
+  encryptedCredentials  Bytes             @map("encrypted_credentials")
+  status                IntegrationStatus
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@index([tenantId], map: "idx_integration_tenant")
+  @@map("integration_connection")
+}
